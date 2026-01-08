@@ -1,0 +1,8 @@
+{
+  "name": "Day 1 as Hackathon spy",
+  "description": "A high-security intelligence platform exploring visual steganography and unseen secret transmission through the lens of elite military operations.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
