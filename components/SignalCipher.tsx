@@ -30,7 +30,7 @@ const SignalCipher: React.FC<SignalCipherProps> = ({ onBack }) => {
     <div className="max-w-6xl mx-auto animate-in slide-in-from-bottom duration-500">
       <div className="mb-8 flex items-center justify-between">
         <button onClick={onBack} className="text-xs text-gray-500 hover:text-white uppercase tracking-widest transition-colors font-bold">
-          ← Terminal Hub
+          &larr; Terminal Hub
         </button>
         <span className="text-amber-500 text-xs font-bold tracking-widest uppercase flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
@@ -75,7 +75,11 @@ const SignalCipher: React.FC<SignalCipherProps> = ({ onBack }) => {
           <div className="bg-glass p-6 rounded-2xl border border-gray-800 h-40 overflow-hidden">
             <h3 className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-4">Console Logs</h3>
             <div className="space-y-1 font-mono text-[9px] text-gray-600 overflow-y-auto h-full pr-2">
-              {logs.map((log, i) => <div key={i}><span className="text-amber-500/40">>></span> {log}</div>)}
+              {logs.map((log, i) => (
+                <div key={i}>
+                  <span className="text-amber-500/40">&gt;&gt;</span> {log}
+                </div>
+              ))}
             </div>
           </div>
         </div>
