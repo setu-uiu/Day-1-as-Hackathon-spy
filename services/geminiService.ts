@@ -1,17 +1,21 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, Chat } from "@google/genai";
 
 // Always initialize with an object containing the apiKey from process.env.API_KEY
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+// Persistent chat instance for HQ communication to maintain context
+let hqChatInstance: Chat | null = null;
+
 /**
  * SIGNAL_CIPHER: Converts cryptic signals/codes/signs to text.
  * Uses an Audience Secret Key to ensure only the target can decrypt.
+ * Upgraded to gemini-3-pro-preview for advanced reasoning requirements.
  */
 export const decryptSignalIntel = async (input: string, secretKey: string) => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: `DECRYPTION TASK:
       INPUT SIGNAL/CODE: "${input}"
       AUDIENCE SECRET KEY PROVIDED: "${secretKey}"
@@ -26,7 +30,6 @@ export const decryptSignalIntel = async (input: string, secretKey: string) => {
       }
     });
     
-    // The response.text property directly returns the string output.
     return {
       text: response.text,
       sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
@@ -39,6 +42,7 @@ export const decryptSignalIntel = async (input: string, secretKey: string) => {
 
 /**
  * VISUAL_PATTERN: Encodes/Decodes feelings into visual patterns.
+ * Upgraded to gemini-3-pro-preview for high-quality reasoning and structured output.
  */
 export const processVisualCipher = async (description: string, targetKey: string, mode: 'ENCODE' | 'DECODE') => {
   try {
@@ -47,7 +51,7 @@ export const processVisualCipher = async (description: string, targetKey: string
       : `DECODE the visual pattern described as "${description}" using secret key "${targetKey}". If the key is wrong, provide a misleading poetic message.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -58,11 +62,11 @@ export const processVisualCipher = async (description: string, targetKey: string
             cipherLogic: { type: Type.STRING },
             audienceVerification: { type: Type.STRING }
           },
-          required: ["resultMessage", "cipherLogic", "audienceVerification"]
+          required: ["resultMessage", "cipherLogic", "audienceVerification"],
+          propertyOrdering: ["resultMessage", "cipherLogic", "audienceVerification"]
         }
       }
     });
-    // Use .text property directly.
     return JSON.parse(response.text || '{}');
   } catch (error) {
     console.error("Gemini Error:", error);
@@ -84,11 +88,12 @@ export const decodeVisualPattern = async (description: string) => {
 
 /**
  * getSpyIntel: General intelligence search for WonderNine component.
+ * Upgraded to gemini-3-pro-preview for complex tactical analysis.
  */
 export const getSpyIntel = async (query: string) => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: `TACTICAL INTELLIGENCE SWEEP: ${query}. Provide a detailed classified briefing. Focus on operational security and tactical implications.`,
       config: {
         tools: [{ googleSearch: {} }],
@@ -107,20 +112,25 @@ export const getSpyIntel = async (query: string) => {
 
 /**
  * VECTOR_PATH: Stealth navigation using Google Maps grounding.
+ * Maps grounding is specifically supported in Gemini 2.5 series models.
  */
 export const getTacticalRoute = async (location: string, objective: string, lat?: number, lng?: number) => {
   try {
     const response = await ai.models.generateContent({
-      // Mapping 'gemini lite' to 'gemini-flash-lite-latest'
-      model: 'gemini-flash-lite-latest',
+      // Maps grounding is only supported in Gemini 2.5 series models.
+      model: 'gemini-2.5-flash',
       contents: `MISSION OBJECTIVE: ${objective}. OPERATIONAL AREA: ${location}. 
-      Identify specific landmarks or safehouses using Google Maps that allow for "unseen travel".`,
+      Identify specific landmarks or safehouses using Google Maps that allow for "unseen travel" or covert deployment. 
+      Explain why these locations are tactically significant for a spy operation.`,
       config: {
         // Maps grounding may be used with googleSearch.
         tools: [{ googleMaps: {} }, { googleSearch: {} }],
         toolConfig: {
           retrievalConfig: {
-            latLng: lat && lng ? { latitude: lat, longitude: lng } : undefined
+            latLng: (lat !== undefined && lng !== undefined) ? {
+              latitude: lat,
+              longitude: lng
+            } : undefined
           }
         }
       }
@@ -132,21 +142,24 @@ export const getTacticalRoute = async (location: string, objective: string, lat?
     };
   } catch (error) {
     console.error("Gemini Error:", error);
-    return { text: "Tactical route generation failed.", sources: [] };
+    return { text: "Tactical route generation failed due to system constraint.", sources: [] };
   }
 };
 
 /**
  * sendHqMessage: Chat interface with APEX Command AI.
+ * Uses a persistent chat session to maintain history across messages.
  */
 export const sendHqMessage = async (message: string) => {
-  const chat = ai.chats.create({
-    model: 'gemini-3-flash-preview',
-    config: {
-      systemInstruction: 'You are the APEX Command AI. Respond as a cold, professional military intelligence coordinator.'
-    }
-  });
-  // chat.sendMessage accepts the message parameter directly.
-  const response = await chat.sendMessage({ message });
+  // Initialize chat instance if not already created to support conversational history
+  if (!hqChatInstance) {
+    hqChatInstance = ai.chats.create({
+      model: 'gemini-3-flash-preview',
+      config: {
+        systemInstruction: 'You are the APEX Command AI. Respond as a cold, professional military intelligence coordinator. Use jargon like "Signal Intercepted," "Affirmative Agent," and "Package Secure." Keep responses brief and tactical.'
+      }
+    });
+  }
+  const response = await hqChatInstance.sendMessage({ message });
   return response.text;
 };
